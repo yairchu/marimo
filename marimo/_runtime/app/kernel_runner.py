@@ -1,6 +1,7 @@
 # Copyright 2026 Marimo. All rights reserved.
 from __future__ import annotations
 
+import contextlib
 import weakref
 from typing import TYPE_CHECKING, Any
 
@@ -120,6 +121,12 @@ class AppKernelRunner:
 
     def register_defs(self, defs: dict[str, Any] | None) -> None:
         self._previously_seen_defs = defs
+        if defs is None:
+            return
+        for cell_id, cell in self.app.cell_manager.valid_cells():
+            if any(x in defs for x in cell.defs):
+                with contextlib.suppress(KeyError):
+                    self._kernel._delete_cell(cell_id)
 
     @property
     def globals(self) -> dict[str, Any]:

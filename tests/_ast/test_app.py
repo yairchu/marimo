@@ -642,6 +642,35 @@ class TestApp:
         assert defs["y"] == 1
 
     @staticmethod
+    def test_run_async_embed() -> None:
+        """Embedding an async app from an async cell must not raise RuntimeError."""
+        child_app = App()
+
+        @child_app.cell
+        async def __() -> tuple[int]:
+            import asyncio
+
+            await asyncio.sleep(0)
+            value = 42
+            return (value,)
+
+        parent_app = App()
+
+        @parent_app.cell
+        def __() -> tuple[Any]:
+            child = None  # overridden via defs
+            return (child,)
+
+        @parent_app.cell
+        async def __(child: Any) -> tuple[Any]:
+            result = await child.embed()
+            return (result,)
+
+        # Should not raise RuntimeError about asyncio.run() in running loop
+        _, defs = parent_app.run(defs={"child": child_app})
+        assert defs["result"].defs["value"] == 42
+
+    @staticmethod
     def test_run_mo_stop() -> None:
         app = App()
 

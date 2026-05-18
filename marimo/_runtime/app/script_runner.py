@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from marimo._ast.names import SETUP_CELL_NAME
 from marimo._dependencies.dependencies import DependencyManager
@@ -170,55 +170,80 @@ class AppScriptRunner:
                             hook()
         return outputs, glbls
 
-    def run(self) -> RunOutput:
-        from marimo._runtime.context.script_context import (
-            initialize_script_context,
-        )
-
-        app = self.app
-
-        is_async = False
-        for cell in app.cell_manager.cells():
+    def _is_async(self) -> bool:
+        for cell in self.app.cell_manager.cells():
             if cell is None:
                 raise RuntimeError(
                     "Unparsable cell encountered. This is a bug in marimo, "
                     "please raise an issue."
                 )
-
             if cell._is_coroutine:
-                is_async = True
-                break
+                return True
+        return False
+
+    def _setup_context(self) -> tuple[bool, list[Any]]:
+        """Set up script context and hooks. Returns (installed_context, post_execute_hooks)."""
+        from marimo._runtime.context.script_context import (
+            initialize_script_context,
+        )
 
         installed_script_context = False
-        try:
-            if not runtime_context_installed():
-                # script context is ephemeral, only installed while the app is
-                # running
-                initialize_script_context(
-                    app=app, stream=NoopStream(), filename=self.filename
-                )
-                installed_script_context = True
-
-            # formatters aren't automatically registered when running as a
-            # script
-            from marimo._output.formatters.formatters import (
-                register_formatters,
+        if not runtime_context_installed():
+            # script context is ephemeral, only installed while the app is
+            # running
+            initialize_script_context(
+                app=self.app, stream=NoopStream(), filename=self.filename
             )
-            from marimo._output.formatting import FORMATTERS
+            installed_script_context = True
 
-            if not FORMATTERS.is_empty():
-                from marimo._runtime.context import get_context
+        # formatters aren't automatically registered when running as a
+        # script
+        from marimo._output.formatters.formatters import (
+            register_formatters,
+        )
+        from marimo._output.formatting import FORMATTERS
 
-                register_formatters(
-                    theme=get_context().marimo_config["display"]["theme"]
-                )
+        if not FORMATTERS.is_empty():
+            from marimo._runtime.context import get_context
 
-            post_execute_hooks = []
-            if DependencyManager.matplotlib.has():
-                from marimo._output.mpl import close_figures
+            register_formatters(
+                theme=get_context().marimo_config["display"]["theme"]
+            )
 
-                post_execute_hooks.append(close_figures)
+        post_execute_hooks: list[Any] = []
+        if DependencyManager.matplotlib.has():
+            from marimo._output.mpl import close_figures
 
+            post_execute_hooks.append(close_figures)
+
+        return installed_script_context, post_execute_hooks
+
+    @staticmethod
+    def _unwrap_exception(e: MarimoRuntimeException) -> NoReturn:
+        # Cell runner manages the exception handling for kernel
+        # runner, but script runner should raise the wrapped
+        # exception if invoked directly.
+        # MarimoMissingRefError, wraps the underlying NameError
+        # for context, so we raise the NameError directly.
+        if isinstance(e.__cause__, MarimoMissingRefError):
+            # For type checking + sanity check
+            if not isinstance(e.__cause__.name_error, NameError):
+                raise MarimoRuntimeException(
+                    "Unexpected error occurred while running the app. "
+                    "Improperly wrapped MarimoMissingRefError exception. "
+                    "Please report this issue to "
+                    "https://github.com/marimo-team/marimo/issues"
+                ) from e.__cause__
+            raise e.__cause__.name_error from e.__cause__
+        # For all other exceptions, we raise the wrapped exception
+        # from "None" to indicate this is an Error propagation, and to not
+        # muddy the stacktrace from the failing cells themselves.
+        raise e.__cause__ from None  # type: ignore
+
+    def run(self) -> RunOutput:
+        is_async = self._is_async()
+        installed_script_context, post_execute_hooks = self._setup_context()
+        try:
             if is_async:
                 outputs, defs = asyncio.run(
                     self._run_asynchronous(
@@ -230,27 +255,28 @@ class AppScriptRunner:
                     post_execute_hooks=post_execute_hooks,
                 )
             return outputs, defs
-
-        # Cell runner manages the exception handling for kernel
-        # runner, but script runner should raise the wrapped
-        # exception if invoked directly.
         except MarimoRuntimeException as e:
-            # MarimoMissingRefError, wraps the under lying NameError
-            # for context, so we raise the NameError directly.
-            if isinstance(e.__cause__, MarimoMissingRefError):
-                # For type checking + sanity check
-                if not isinstance(e.__cause__.name_error, NameError):
-                    raise MarimoRuntimeException(
-                        "Unexpected error occurred while running the app. "
-                        "Improperly wrapped MarimoMissingRefError exception. "
-                        "Please report this issue to "
-                        "https://github.com/marimo-team/marimo/issues"
-                    ) from e.__cause__
-                raise e.__cause__.name_error from e.__cause__
-            # For all other exceptions, we raise the wrapped exception
-            # from "None" to indicate this is an Error propagation, and to not
-            # muddy the stacktrace from the failing cells themselves.
-            raise e.__cause__ from None  # type: ignore
+            self._unwrap_exception(e)
+        finally:
+            if installed_script_context:
+                teardown_context()
+
+    async def run_async(self) -> RunOutput:
+        """Run the app asynchronously, for use when already inside an event loop."""
+        is_async = self._is_async()
+        installed_script_context, post_execute_hooks = self._setup_context()
+        try:
+            if is_async:
+                outputs, defs = await self._run_asynchronous(
+                    post_execute_hooks=post_execute_hooks,
+                )
+            else:
+                outputs, defs = self._run_synchronous(
+                    post_execute_hooks=post_execute_hooks,
+                )
+            return outputs, defs
+        except MarimoRuntimeException as e:
+            self._unwrap_exception(e)
         finally:
             if installed_script_context:
                 teardown_context()

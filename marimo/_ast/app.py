@@ -951,10 +951,35 @@ class App:
                 defs=self._globals_to_defs(glbls),
             )
         else:
-            flat_outputs, computed_defs = self.run(defs=defs or {})
+            from marimo._runtime.app.script_runner import AppScriptRunner
+
+            glbls = {}
+            if self._setup is not None:
+                glbls = {**self._setup._glbls}
+
+            if set(glbls) & set(defs or {}):
+                raise TypeError(
+                    "`defs` cannot override setup cell definitions."
+                )
+
+            if defs is not None:
+                glbls.update(defs)
+
+            self._maybe_initialize()
+            outputs, glbls = await AppScriptRunner(
+                InternalApp(self),
+                filename=self._filename,
+                glbls=glbls,
+            ).run_async()
             return AppEmbedResult(
-                output=vstack([o for o in flat_outputs if o is not None]),
-                defs=computed_defs,
+                output=vstack(
+                    [
+                        o
+                        for o in self._flatten_outputs(outputs)
+                        if o is not None
+                    ]
+                ),
+                defs=self._globals_to_defs(glbls),
             )
 
 

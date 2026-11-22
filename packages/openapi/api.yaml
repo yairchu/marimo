@@ -5620,6 +5620,10 @@ components:
           description: Send notebook source code to clients in run mode. Edit mode
             always includes code.
           type: boolean
+        lsp:
+          default: true
+          description: Enable language servers and GitHub Copilot in edit mode.
+          type: boolean
         port:
           anyOf:
           - maximum: 65535
@@ -5719,6 +5723,7 @@ components:
       - allow_origins
       - headless
       - watch
+      - lsp
       - skew_protection
       - timeout
       - token_password

@@ -70,7 +70,9 @@ export const resolvedMarimoConfigAtom = atom<UserConfig>((get) => {
   const userConfig = get(userConfigAtom);
   const config = mergeConfig<UserConfig>(userConfig, overrides);
   if (config.server?.lsp === false) {
-    config.language_servers = {};
+    config.language_servers = {
+      pylsp: { ...config.language_servers.pylsp, enabled: false },
+    };
     if (config.completion.copilot === "github") {
       config.completion.copilot = false;
     }

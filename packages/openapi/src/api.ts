@@ -7055,6 +7055,11 @@ export interface components {
        */
       include_code: boolean;
       /**
+       * @description Enable language servers and GitHub Copilot in edit mode.
+       * @default true
+       */
+      lsp: boolean;
+      /**
        * @description Port to bind to (0-65535). If unset or 0, find an available port.
        * @default null
        */

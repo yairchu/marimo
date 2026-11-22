@@ -17,7 +17,9 @@ describe("language server configuration", () => {
       completion: { copilot: "github" },
     });
 
-    expect(store.get(resolvedMarimoConfigAtom).language_servers).toEqual({});
+    expect(
+      store.get(resolvedMarimoConfigAtom).language_servers.pylsp.enabled,
+    ).toBe(false);
     expect(store.get(resolvedMarimoConfigAtom).completion.copilot).toBe(false);
 
     store.set(configOverridesAtom, { server: { lsp: false } });

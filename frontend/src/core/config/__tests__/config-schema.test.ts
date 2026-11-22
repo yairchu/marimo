@@ -170,6 +170,7 @@ test("default UserConfig - empty", () => {
       },
       "server": {
         "disable_file_downloads": false,
+        "lsp": true,
         "session_secret": null,
       },
       "sharing": null,
@@ -302,6 +303,7 @@ test("default UserConfig - one level", () => {
       },
       "server": {
         "disable_file_downloads": false,
+        "lsp": true,
         "session_secret": null,
       },
       "sharing": null,

@@ -255,7 +255,7 @@ def start(
     port = server_config.port or find_free_port(DEFAULT_PORT, addr=host)
 
     lsp_composite_server: CompositeLspServer | None = None
-    if mode == SessionMode.EDIT:
+    if is_edit and server_config.lsp:
         lsp_composite_server = CompositeLspServer(
             config_reader=config_reader,
             min_port=DEFAULT_PORT + 400,

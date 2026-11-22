@@ -1040,6 +1040,8 @@ def _is_language_server_enabled(
 
 
 def any_lsp_server_running(config: MarimoConfig) -> bool:
+    if not config.server.lsp:
+        return False
     copilot_enabled = config.completion.copilot
     language_servers_enabled = any(
         _is_language_server_enabled(config.language_servers, name)

@@ -68,7 +68,14 @@ export const configOverridesAtom = atom<{}>({});
 export const resolvedMarimoConfigAtom = atom<UserConfig>((get) => {
   const overrides = get(configOverridesAtom);
   const userConfig = get(userConfigAtom);
-  return mergeConfig(userConfig, overrides);
+  const config = mergeConfig<UserConfig>(userConfig, overrides);
+  if (config.server?.lsp === false) {
+    config.language_servers = {};
+    if (config.completion.copilot === "github") {
+      config.completion.copilot = false;
+    }
+  }
+  return config;
 });
 
 export const autoRunOnChangeAtom = atom(

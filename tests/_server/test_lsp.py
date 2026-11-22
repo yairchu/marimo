@@ -798,6 +798,15 @@ async def test_ty_server_starts_with_binary_on_path(
 
 def test_any_lsp_server_running():
     # Test any_lsp_server_running function
+    disabled_config = merge_default_config(
+        {
+            "server": {"lsp": False},
+            "completion": {"copilot": "github"},
+            "language_servers": {"pylsp": {"enabled": True}},
+        }
+    )
+    assert any_lsp_server_running(disabled_config) is False
+
     config: MarimoConfig = merge_default_config(
         {
             "completion": {

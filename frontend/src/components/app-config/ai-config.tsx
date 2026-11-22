@@ -548,6 +548,8 @@ export const AiCodeCompletionConfig: React.FC<AiConfigProps> = ({
     name: "completion.copilot",
   });
   const { value: copilot } = getOverride("completion.copilot", watchedCopilot);
+  const lspEnabled =
+    useAtomValue(resolvedMarimoConfigAtom).server.lsp !== false;
   return (
     <SettingGroup>
       <SettingSubtitle>Copilot</SettingSubtitle>
@@ -560,7 +562,13 @@ export const AiCodeCompletionConfig: React.FC<AiConfigProps> = ({
         description="Choose GitHub Copilot or a custom provider (such as Ollama) to enable AI-powered code completion."
       />
 
-      {renderCopilotProvider({ form, config, onSubmit, copilot })}
+      {copilot === "github" && !lspEnabled ? (
+        <p className="text-sm text-muted-foreground">
+          GitHub Copilot is disabled for this server.
+        </p>
+      ) : (
+        renderCopilotProvider({ form, config, onSubmit, copilot })
+      )}
     </SettingGroup>
   );
 };

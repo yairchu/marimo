@@ -6,6 +6,7 @@ import type React from "react";
 import { Spinner } from "@/components/icons/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
+import { useResolvedMarimoConfig } from "@/core/config/config";
 import { API } from "@/core/network/api";
 import { connectionAtom } from "@/core/network/connection";
 import type {
@@ -23,11 +24,13 @@ const CHECK_LSP_HEALTH_INTERVAL_MS = 60_000;
 export const lspHealthAtom = atom<LspHealthResponse | null>(null);
 
 export const LspStatus: React.FC = () => {
+  const [config] = useResolvedMarimoConfig();
+  const lspEnabled = config.server.lsp !== false;
   const connection = useAtomValue(connectionAtom).state;
   const setLspHealth = useSetAtom(lspHealthAtom);
 
   const { isFetching, data, refetch } = useAsyncData(async () => {
-    if (isWasm() || !isAppConnected(connection)) {
+    if (!lspEnabled || isWasm() || !isAppConnected(connection)) {
       return null;
     }
 
@@ -38,10 +41,13 @@ export const LspStatus: React.FC = () => {
     } catch {
       return null;
     }
-  }, [connection]);
+  }, [connection, lspEnabled]);
 
   useInterval(refetch, {
-    delayMs: isAppConnected(connection) ? CHECK_LSP_HEALTH_INTERVAL_MS : null,
+    delayMs:
+      lspEnabled && isAppConnected(connection)
+        ? CHECK_LSP_HEALTH_INTERVAL_MS
+        : null,
     whenVisible: true,
   });
 

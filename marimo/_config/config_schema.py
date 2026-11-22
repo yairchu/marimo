@@ -349,6 +349,13 @@ class ServerConfig(Config, kw_only=True):
             extra={"cli_flag": ["--watch"]},
         ),
     ] = False
+    lsp: Annotated[
+        bool,
+        Meta(
+            description="Enable language servers and GitHub Copilot in edit mode.",
+            extra={"cli_flag": ["--lsp", "--no-lsp"]},
+        ),
+    ] = True
     skew_protection: Annotated[
         bool,
         Meta(

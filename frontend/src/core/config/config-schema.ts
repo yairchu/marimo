@@ -230,6 +230,7 @@ export const UserConfigSchema = z
         allow_origins: z.array(z.string()).optional(),
         headless: z.boolean().optional(),
         watch: z.boolean().optional(),
+        lsp: z.boolean().optional(),
         skew_protection: z.boolean().optional(),
         timeout: z.number().nullish(),
         session_ttl: z.number().int().nullish(),

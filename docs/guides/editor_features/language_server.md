@@ -13,6 +13,17 @@ get completions from pylsp and diagnostics from basedpyright at the same time.
 
 For language server installation with `--sandbox`, see [Sandbox mode](#sandbox-mode-sandbox).
 
+## Disable language servers for an editor session
+
+Use `marimo edit --no-lsp --port 2718 notebook.py` in environments that
+restrict which ports marimo can bind. With an explicit port, marimo skips the
+language-server port probes and listens on the specified editor port.
+This also disables GitHub Copilot, which uses a language server.
+
+For a persistent setting, set `lsp = false` under `[server]` in
+`marimo.toml` or `[tool.marimo.server]` in `pyproject.toml`.
+Use `--lsp` to override that setting for one launch.
+
 ## Supported language servers
 
 ### pylsp (python-lsp-server)

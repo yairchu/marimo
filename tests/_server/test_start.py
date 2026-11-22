@@ -165,3 +165,47 @@ def test_start_uses_resolved_server_config(
         "redirect_console_to_browser": mode == SessionMode.EDIT,
         "token_enabled": False,
     }
+
+
+@pytest.mark.usefixtures("clean_config_environment")
+def test_edit_without_lsp_uses_only_explicit_port(tmp_path: Path) -> None:
+    from click.testing import CliRunner
+
+    from marimo._cli.cli import main
+    from marimo._server.lsp import NoopLspServer
+
+    notebook = tmp_path / "notebook.py"
+    notebook.write_text("import marimo\napp = marimo.App()\n")
+    with (
+        patch(
+            "marimo._utils.platform.check_shared_memory_available",
+            return_value=(True, ""),
+        ),
+        patch("marimo._server.start.find_free_port") as main_probe,
+        patch("marimo._server.lsp.find_free_port") as lsp_probe,
+        patch("marimo._server.start.initialize_fd_limit"),
+        patch("marimo._server.start.initialize_signals"),
+        patch("marimo._server.start.uvicorn.Server", autospec=True) as server,
+    ):
+        result = CliRunner().invoke(
+            main,
+            [
+                "edit",
+                "--no-lsp",
+                "--headless",
+                "--no-token",
+                "--skip-update-check",
+                "--port",
+                "2718",
+                str(notebook),
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    main_probe.assert_not_called()
+    lsp_probe.assert_not_called()
+    uvicorn_config = server.call_args.args[0]
+    assert (uvicorn_config.host, uvicorn_config.port) == ("127.0.0.1", 2718)
+    assert isinstance(
+        uvicorn_config.app.state.session_manager.lsp_server, NoopLspServer
+    )

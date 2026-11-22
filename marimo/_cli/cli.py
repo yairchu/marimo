@@ -399,6 +399,11 @@ class _OptionalValueOption(click.Option):
     help="Watch the file for changes and reload the code when saved in another editor.",
 )
 @click.option(
+    "--lsp/--no-lsp",
+    default=True,
+    help="Enable language servers and GitHub Copilot.",
+)
+@click.option(
     "--skew-protection/--no-skew-protection",
     is_flag=True,
     default=True,
